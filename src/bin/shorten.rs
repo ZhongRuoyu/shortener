@@ -31,8 +31,8 @@ struct Cli {
   #[arg(long, default_value_t = 6)]
   code_length: usize,
 
-  /// Path to SQLite database for URL storage
-  #[arg(long, default_value = "urls.db")]
+  /// Path to SQLite database for URL and API key storage
+  #[arg(long, default_value = "shorten.db")]
   sqlite_db: String,
 
   /// Path to access log file
