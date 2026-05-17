@@ -1,4 +1,3 @@
+target/
 access.log
 urls.db
-/shorten
-/shortenkey
