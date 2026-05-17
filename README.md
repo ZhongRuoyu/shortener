@@ -25,6 +25,14 @@ All installation methods come with two executables:
 - `shorten`: the HTTP server.
 - `shortenkey`: the user and API key management CLI.
 
+### Homebrew
+
+`shorten` can be installed on macOS and Linux with Homebrew:
+
+```sh
+brew install zhongruoyu/tap/shorten
+```
+
 ### Release binaries
 
 `shorten`'s GitHub releases come with pre-built binaries for Linux, macOS, and
