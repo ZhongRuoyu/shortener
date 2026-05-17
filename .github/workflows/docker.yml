@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+    tags:
+      - "**"
   pull_request:
 
 concurrency:
@@ -40,13 +42,13 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
       - name: Login to Docker Hub
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref_type == 'tag')
         uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
         with:
           username: ${{ env.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Login to GitHub Container Registry
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref_type == 'tag')
         uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
         with:
           registry: ghcr.io
@@ -58,7 +60,11 @@ jobs:
           {
             echo "cache_from=type=registry,ref=$BUILD_CACHE_REPOSITORY:$ARCH"
             if [[ "$PUSH" = true ]]; then
-              echo "cache_to=type=registry,ref=$BUILD_CACHE_REPOSITORY:$ARCH,mode=max"
+              if [[ "$GITHUB_REF" = refs/heads/main ]]; then
+                echo "cache_to=type=registry,ref=$BUILD_CACHE_REPOSITORY:$ARCH,mode=max"
+              else
+                echo "cache_to="
+              fi
               echo "outputs<<OUTPUTS"
               echo "type=image,name=$DOCKERHUB_REPOSITORY,name-canonical=true,push=true,push-by-digest=true"
               echo "type=image,name=$GHCR_REPOSITORY,name-canonical=true,push=true,push-by-digest=true"
@@ -70,7 +76,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
         env:
           ARCH: ${{ matrix.arch }}
-          PUSH: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          PUSH: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref_type == 'tag') }}
       - name: Build and push Docker image by digest
         id: build
         uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7.1.0
@@ -94,7 +100,7 @@ jobs:
           path: ${{ runner.temp }}/digests/*
 
   merge:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref_type == 'tag')
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -122,10 +128,31 @@ jobs:
           merge-multiple: true
       - name: Create manifest list and push
         run: |
-          docker buildx imagetools create \
-            --tag="$DOCKERHUB_REPOSITORY:latest" \
-            --tag="$DOCKERHUB_REPOSITORY:$GITHUB_SHA" \
-            --tag="$GHCR_REPOSITORY:latest" \
-            --tag="$GHCR_REPOSITORY:$GITHUB_SHA" \
-            "$GHCR_REPOSITORY@sha256:$(cat "$RUNNER_TEMP"/digests/x86_64)" \
+          tags=()
+          case "$GITHUB_REF_TYPE" in
+          "branch")
+            tags+=(
+              "$DOCKERHUB_REPOSITORY:main"
+              "$DOCKERHUB_REPOSITORY:$GITHUB_SHA"
+              "$GHCR_REPOSITORY:main"
+              "$GHCR_REPOSITORY:$GITHUB_SHA"
+            )
+            ;;
+          "tag")
+            tags+=(
+              "$DOCKERHUB_REPOSITORY:latest"
+              "$DOCKERHUB_REPOSITORY:$GITHUB_REF_NAME"
+              "$GHCR_REPOSITORY:latest"
+              "$GHCR_REPOSITORY:$GITHUB_REF_NAME"
+            )
+            ;;
+          esac
+          tag_args=()
+          for tag in "${tags[@]}"; do
+            tag_args+=(--tag="$tag")
+          done
+          images=(
+            "$GHCR_REPOSITORY@sha256:$(cat "$RUNNER_TEMP"/digests/x86_64)"
             "$GHCR_REPOSITORY@sha256:$(cat "$RUNNER_TEMP"/digests/aarch64)"
+          )
+          docker buildx imagetools create "${tag_args[@]}" "${images[@]}"
