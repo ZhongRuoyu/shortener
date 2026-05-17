@@ -43,7 +43,8 @@ A Docker image is available on Docker Hub as
 [`zhongruoyu/shorten`](https://hub.docker.com/r/zhongruoyu/shorten),
 and on GitHub Container Registry as
 [`ghcr.io/zhongruoyu/shorten`](https://ghcr.io/zhongruoyu/shorten).
-Use the `main` tag to track the latest updates.
+Use the `latest` tag or a specific version tag like `v0.1.0` to track releases,
+and `main` to track the latest commit on the main branch.
 
 ## Usage
 
@@ -128,7 +129,7 @@ mkdir -p data
 docker run --rm \
   -p 8080:8080 \
   -v "$PWD/data:/data" \
-  zhongruoyu/shorten:main \
+  zhongruoyu/shorten \
   --listen-port 8080 \
   --url-prefix http://localhost:8080/ \
   --sqlite-db /data/shorten.db \
@@ -142,7 +143,7 @@ entrypoint:
 docker run --rm \
   --entrypoint shortenkey \
   -v "$PWD/data:/data" \
-  zhongruoyu/shorten:main \
+  zhongruoyu/shorten \
   --database /data/shorten.db create-user alice
 ```
 
