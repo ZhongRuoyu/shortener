@@ -20,6 +20,18 @@ and API keys.
 
 ## Installation
 
+All installation methods come with two executables:
+
+- `shorten`: the HTTP server.
+- `shortenkey`: the user and API key management CLI.
+
+### Release binaries
+
+`shorten`'s GitHub releases come with pre-built binaries for Linux, macOS, and
+Windows.
+Download the binaries from
+[the latest release](https://github.com/ZhongRuoyu/shorten/releases/latest).
+
 ### Cargo
 
 Install `shorten` with Cargo as follows:
@@ -27,11 +39,6 @@ Install `shorten` with Cargo as follows:
 ```sh
 cargo install --locked --git https://github.com/ZhongRuoyu/shorten.git
 ```
-
-This installs both binaries:
-
-- `shorten`: the HTTP server.
-- `shortenkey`: the user and API key management CLI.
 
 By default, `shorten` uses the system's SQLite library.
 If you don't have it installed, or want to use the bundled version, add
@@ -45,6 +52,8 @@ and on GitHub Container Registry as
 [`ghcr.io/zhongruoyu/shorten`](https://ghcr.io/zhongruoyu/shorten).
 Use the `latest` tag or a specific version tag like `v0.1.0` to track releases,
 and `main` to track the latest commit on the main branch.
+
+See ["Run with Docker"](#run-with-docker) for usage instructions with Docker.
 
 ## Usage
 
@@ -120,7 +129,7 @@ Other management commands include:
 - `list-keys <username>`
 - `delete-key <key-or-hash>`
 
-### Run With Docker
+### Run with Docker
 
 Run the server and persist the database and logs in a local directory:
 
