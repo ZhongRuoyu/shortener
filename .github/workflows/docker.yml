@@ -57,26 +57,34 @@ jobs:
       - name: Set up build
         id: setup
         run: |
-          {
-            echo "cache_from=type=registry,ref=$BUILD_CACHE_REPOSITORY:$ARCH"
-            if [[ "$PUSH" = true ]]; then
-              if [[ "$GITHUB_REF" = refs/heads/main ]]; then
-                echo "cache_to=type=registry,ref=$BUILD_CACHE_REPOSITORY:$ARCH,mode=max"
-              else
-                echo "cache_to="
+          cache_from=""
+          cache_to=""
+          outputs=()
+          if [[ "$GITHUB_EVENT_NAME" = "push" ]]; then
+            if [[ "$GITHUB_REF_TYPE" = "branch" ]]; then
+              cache_from="type=registry,ref=$BUILD_CACHE_REPOSITORY:$ARCH"
+              if [[ "$GITHUB_REF" = "refs/heads/main" ]]; then
+                cache_to="type=registry,ref=$BUILD_CACHE_REPOSITORY:$ARCH,mode=max"
               fi
-              echo "outputs<<OUTPUTS"
-              echo "type=image,name=$DOCKERHUB_REPOSITORY,name-canonical=true,push=true,push-by-digest=true"
-              echo "type=image,name=$GHCR_REPOSITORY,name-canonical=true,push=true,push-by-digest=true"
-              echo "OUTPUTS"
-            else
-              echo "cache_to="
-              echo "outputs="
             fi
+            if [[ "$GITHUB_REF" = "refs/heads/main" || "$GITHUB_REF_TYPE" = "tag" ]]; then
+              outputs+=(
+                "type=image,name=$DOCKERHUB_REPOSITORY,name-canonical=true,push=true,push-by-digest=true"
+                "type=image,name=$GHCR_REPOSITORY,name-canonical=true,push=true,push-by-digest=true"
+              )
+            fi
+          fi
+          {
+            echo "cache_from=$cache_from"
+            echo "cache_to=$cache_to"
+            echo "outputs<<OUTPUTS"
+            if [[ ${#outputs[@]} -gt 0 ]]; then
+              printf '%s\n' "${outputs[@]}"
+            fi
+            echo "OUTPUTS"
           } >> "$GITHUB_OUTPUT"
         env:
           ARCH: ${{ matrix.arch }}
-          PUSH: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref_type == 'tag') }}
       - name: Build and push Docker image by digest
         id: build
         uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7.1.0
