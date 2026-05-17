@@ -1,7 +1,13 @@
 [package]
 name = "shorten"
 version = "0.1.0"
+authors = ["Ruoyu Zhong <zhongruoyu@outlook.com>"]
 edition = "2024"
+description = "A simple URL shortener."
+readme = "README.md"
+homepage = "https://github.com/ZhongRuoyu/shorten"
+repository = "https://github.com/ZhongRuoyu/shorten.git"
+license = "MIT"
 default-run = "shorten"
 
 [dependencies]
