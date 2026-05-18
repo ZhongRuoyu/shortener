@@ -45,7 +45,7 @@ Download the binaries from
 Install `shortener` with Cargo as follows:
 
 ```sh
-cargo install --locked --git https://github.com/ZhongRuoyu/shortener.git
+cargo install shortener
 ```
 
 By default, `shortener` uses the system's SQLite library.
