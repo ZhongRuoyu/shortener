@@ -16,11 +16,11 @@ RUN \
   <<RUN
   set -ex
   cargo build --locked --release --features bundled-sqlite
-  cp target/release/shorten /bin/shorten
-  cp target/release/shortenkey /bin/shortenkey
+  cp target/release/shortener /bin/shortener
+  cp target/release/shortenerkey /bin/shortenerkey
 RUN
 
 FROM scratch
-COPY --from=build /bin/shorten /bin/shorten
-COPY --from=build /bin/shortenkey /bin/shortenkey
-ENTRYPOINT ["/bin/shorten"]
+COPY --from=build /bin/shortener /bin/shortener
+COPY --from=build /bin/shortenerkey /bin/shortenerkey
+ENTRYPOINT ["/bin/shortener"]

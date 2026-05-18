@@ -49,7 +49,7 @@ jobs:
           version="$(
             cargo metadata --format-version=1 --no-deps |
               jq --raw-output \
-                --arg package shorten \
+                --arg package shortener \
                 '.packages[] | select(.name == $package) | .version'
           )"
           echo "version=$version" >> "$GITHUB_OUTPUT"
@@ -69,7 +69,7 @@ jobs:
           tar czvf "$ARTIFACT.tar.gz" "$ARTIFACT"
           echo "artifact=$ARTIFACT.tar.gz" >> "$GITHUB_OUTPUT"
         env:
-          ARTIFACT: shorten-${{ steps.version.outputs.version }}-${{ matrix.target }}
+          ARTIFACT: shortener-${{ steps.version.outputs.version }}-${{ matrix.target }}
           TARGET: ${{ matrix.target }}
       - name: Generate build provenance
         uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0

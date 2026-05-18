@@ -2,13 +2,13 @@ use std::process;
 
 use clap::{Parser, Subcommand};
 
-use shorten::{Database, DatabaseError};
+use shortener::{Database, DatabaseError};
 
 /// Manage users and API keys for the URL shortener
 #[derive(Parser)]
 #[command(
   version,
-  long_version = shorten::version_string(),
+  long_version = shortener::version_string(),
 )]
 struct Cli {
   /// Path to the SQLite database

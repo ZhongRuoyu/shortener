@@ -20,10 +20,10 @@ defaults:
 
 env:
   DOCKERHUB_USERNAME: zhongruoyu
-  DOCKERHUB_REPOSITORY: zhongruoyu/shorten
+  DOCKERHUB_REPOSITORY: zhongruoyu/shortener
   GHCR_USERNAME: zhongruoyu
-  GHCR_REPOSITORY: ghcr.io/zhongruoyu/shorten
-  BUILD_CACHE_REPOSITORY: ghcr.io/zhongruoyu/shorten/cache
+  GHCR_REPOSITORY: ghcr.io/zhongruoyu/shortener
+  BUILD_CACHE_REPOSITORY: ghcr.io/zhongruoyu/shortener/cache
 
 jobs:
   build:

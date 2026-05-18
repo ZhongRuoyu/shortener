@@ -12,9 +12,9 @@ fn main() {
   let build_date = build_date();
   let target = target();
 
-  println!("cargo:rustc-env=SHORTEN_GIT_HASH={git_hash}");
-  println!("cargo:rustc-env=SHORTEN_BUILD_DATE={build_date}");
-  println!("cargo:rustc-env=SHORTEN_TARGET={target}");
+  println!("cargo:rustc-env=SHORTENER_GIT_HASH={git_hash}");
+  println!("cargo:rustc-env=SHORTENER_BUILD_DATE={build_date}");
+  println!("cargo:rustc-env=SHORTENER_TARGET={target}");
 }
 
 fn git_hash() -> String {

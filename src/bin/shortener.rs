@@ -2,13 +2,13 @@ use std::process;
 
 use clap::Parser;
 
-use shorten::{Config, Logger, Shortener};
+use shortener::{Config, Logger, Shortener};
 
 /// URL shortener server
 #[derive(Parser)]
 #[command(
   version,
-  long_version = shorten::version_string(),
+  long_version = shortener::version_string(),
 )]
 struct Cli {
   /// Enable authentication for URL shortening
@@ -32,7 +32,7 @@ struct Cli {
   code_length: usize,
 
   /// Path to SQLite database for URL and API key storage
-  #[arg(long, default_value = "shorten.db")]
+  #[arg(long, default_value = "shortener.db")]
   sqlite_db: String,
 
   /// Path to access log file
