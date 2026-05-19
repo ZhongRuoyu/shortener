@@ -1,3 +1,5 @@
+/// Returns a human-readable version string that includes the package
+/// version, Git commit hash, build date, and target triple.
 pub fn version_string() -> String {
   let version = env!("CARGO_PKG_VERSION");
   let git_hash = env!("SHORTENER_GIT_HASH");

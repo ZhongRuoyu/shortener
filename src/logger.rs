@@ -5,11 +5,19 @@ use std::sync::Mutex;
 use chrono::Local;
 use log::{LevelFilter, Log, Metadata, Record};
 
+/// A simple logger that writes timestamped messages to both stdout
+/// and a file.
 pub struct Logger {
   file: Mutex<File>,
 }
 
 impl Logger {
+  /// Initializes the global logger, writing log messages to `path`.
+  ///
+  /// The log file is created if it does not exist and appended to if
+  /// it does. On Unix systems the file is created with `0600`
+  /// permissions. Returns an error if the file cannot be opened or the
+  /// logger has already been set.
   pub fn init(path: &str) -> io::Result<()> {
     let mut options = OpenOptions::new();
     options.create(true).append(true).write(true);

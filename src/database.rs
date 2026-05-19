@@ -6,27 +6,39 @@ use thiserror::Error;
 
 use crate::api_key::{generate_api_key, hash_api_key};
 
+/// Errors that can arise from database operations.
 #[derive(Debug, Error)]
 pub enum DatabaseError {
+  /// The requested resource does not exist.
   #[error("not found")]
   NotFound,
+  /// A user with the given username already exists.
   #[error("username already in use")]
   UsernameAlreadyInUse,
+  /// A short code with the given value already exists.
   #[error("code already in use")]
   CodeAlreadyInUse,
+  /// A unique API key could not be generated after several attempts.
   #[error("could not generate API key")]
   CouldNotGenerateApiKey,
+  /// A base64 decoding error while processing an API key.
   #[error(transparent)]
   ApiKey(#[from] base64::DecodeError),
+  /// An underlying SQLite error.
   #[error(transparent)]
   Sqlite(#[from] rusqlite::Error),
 }
 
+/// Thread-safe wrapper around a SQLite connection for URL and API key storage.
 pub struct Database {
   connection: Mutex<Connection>,
 }
 
 impl Database {
+  /// Opens (and optionally creates) the database at `path`.
+  ///
+  /// Set `create` to `true` to allow creating a new database file;
+  /// set it to `false` to fail if the file does not already exist.
   pub fn new(
     path: impl AsRef<Path>,
     create: bool,
@@ -42,6 +54,7 @@ impl Database {
     })
   }
 
+  /// Creates the required tables if they do not already exist.
   pub fn init(&self) -> Result<(), DatabaseError> {
     let connection = self.connection();
     connection.execute_batch(
@@ -73,6 +86,10 @@ impl Database {
     Ok(())
   }
 
+  /// Creates a new active user with the given `username`.
+  ///
+  /// Returns [`DatabaseError::UsernameAlreadyInUse`] if the username
+  /// is already taken.
   pub fn create_user(&self, username: &str) -> Result<(), DatabaseError> {
     let connection = self.connection();
     match connection.execute(
@@ -90,6 +107,7 @@ impl Database {
     }
   }
 
+  /// Returns the usernames of all active users.
   pub fn list_users(&self) -> Result<Vec<String>, DatabaseError> {
     let connection = self.connection();
     let mut statement = connection.prepare(
@@ -105,6 +123,11 @@ impl Database {
     Ok(users)
   }
 
+  /// Deactivates the user with the given `username` and all of their
+  /// API keys.
+  ///
+  /// Returns [`DatabaseError::NotFound`] if no active user with that
+  /// name exists.
   pub fn delete_user(&self, username: &str) -> Result<(), DatabaseError> {
     let connection = self.connection();
     connection.execute(
@@ -132,6 +155,12 @@ impl Database {
     Ok(())
   }
 
+  /// Generates and stores a new API key for `username`, returning the
+  /// plaintext key.
+  ///
+  /// Returns [`DatabaseError::NotFound`] if no active user with that
+  /// name exists, or [`DatabaseError::CouldNotGenerateApiKey`] if a
+  /// unique key could not be generated.
   pub fn create_api_key(
     &self,
     username: &str,
@@ -172,11 +201,20 @@ impl Database {
     Err(DatabaseError::CouldNotGenerateApiKey)
   }
 
+  /// Validates a plaintext API key and returns the associated username.
+  ///
+  /// Returns [`DatabaseError::NotFound`] if the key is invalid or
+  /// belongs to an inactive user.
   pub fn check_api_key(&self, key: &str) -> Result<String, DatabaseError> {
     let key_hash = hash_api_key(key)?;
     self.check_api_key_by_hash(&key_hash)
   }
 
+  /// Validates an API key by its SHA-256 hex hash and returns the
+  /// associated username.
+  ///
+  /// Returns [`DatabaseError::NotFound`] if the hash is not found or
+  /// belongs to an inactive user.
   pub fn check_api_key_by_hash(
     &self,
     key_hash: &str,
@@ -200,6 +238,8 @@ impl Database {
     username.ok_or(DatabaseError::NotFound)
   }
 
+  /// Returns the SHA-256 hex hashes of all active API keys for
+  /// `username`.
   pub fn list_api_keys(
     &self,
     username: &str,
@@ -221,11 +261,17 @@ impl Database {
     Ok(keys)
   }
 
+  /// Deactivates an API key identified by its plaintext value.
+  ///
+  /// Returns [`DatabaseError::NotFound`] if the key is not found.
   pub fn delete_api_key(&self, key: &str) -> Result<(), DatabaseError> {
     let key_hash = hash_api_key(key)?;
     self.delete_api_key_by_hash(&key_hash)
   }
 
+  /// Deactivates an API key identified by its SHA-256 hex hash.
+  ///
+  /// Returns [`DatabaseError::NotFound`] if the hash is not found.
   pub fn delete_api_key_by_hash(
     &self,
     key_hash: &str,
@@ -246,6 +292,10 @@ impl Database {
     Ok(())
   }
 
+  /// Looks up the full URL for a short `code` and increments its hit
+  /// counter.
+  ///
+  /// Returns [`DatabaseError::NotFound`] if the code does not exist.
   pub fn get_url(&self, code: &str) -> Result<String, DatabaseError> {
     let connection = self.connection();
     let url = connection
@@ -273,6 +323,11 @@ impl Database {
     Ok(url)
   }
 
+  /// Stores a new short `code` mapping to `url`, attributed to
+  /// `created_by`.
+  ///
+  /// Returns [`DatabaseError::CodeAlreadyInUse`] if `code` is already
+  /// taken.
   pub fn create_code(
     &self,
     url: &str,

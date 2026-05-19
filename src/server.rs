@@ -18,6 +18,7 @@ use crate::database::{Database, DatabaseError};
 
 const MAX_BODY_SIZE: usize = 8192;
 
+/// The URL shortener HTTP server.
 pub struct Shortener {
   state: AppState,
 }
@@ -29,6 +30,8 @@ struct AppState {
 }
 
 impl Shortener {
+  /// Creates a new `Shortener` from `config`, opening or creating the
+  /// SQLite database and running schema initialization.
   pub fn new(config: Config) -> Result<Self, DatabaseError> {
     let database = Database::new(&config.sqlite_db, true)?;
     database.init()?;
@@ -41,6 +44,8 @@ impl Shortener {
     })
   }
 
+  /// Binds the configured TCP port and starts serving HTTP requests.
+  /// This future runs until the server encounters an I/O error.
   pub async fn listen_and_serve(self) -> io::Result<()> {
     let address = &SocketAddr::new(
       Ipv6Addr::UNSPECIFIED.into(),

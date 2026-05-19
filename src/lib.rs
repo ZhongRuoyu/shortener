@@ -1,3 +1,5 @@
+#![doc = include_str!("../README.md")]
+
 mod api_key;
 mod code;
 mod config;
