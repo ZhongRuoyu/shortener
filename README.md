@@ -164,6 +164,22 @@ docker run --rm \
   --database /data/shortener.db create-user alice
 ```
 
+### Shell completions
+
+Shell completions are available for `shortener` and `shortenerkey`.
+To enable them, add the relevant command to your shell's profile:
+
+```sh
+# Bash
+source <(shortener completions bash)
+# Zsh
+source <(shortener completions zsh)
+# Fish
+shortener completions fish | source
+# PowerShell
+shortener completions powershell | Out-String | Invoke-Expression
+```
+
 ## License
 
 This project is licensed under the MIT License.

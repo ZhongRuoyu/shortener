@@ -1,6 +1,8 @@
+use std::io;
 use std::process;
 
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory, Parser, Subcommand};
+use clap_complete::Shell;
 
 use shortener::{Database, DatabaseError};
 
@@ -13,7 +15,7 @@ use shortener::{Database, DatabaseError};
 struct Cli {
   /// Path to the SQLite database
   #[arg(short, long)]
-  database: String,
+  database: Option<String>,
 
   #[command(subcommand)]
   action: Action,
@@ -26,32 +28,44 @@ enum Action {
     /// Username to create
     username: String,
   },
+
   /// List all users
   ListUsers,
+
   /// Delete a user
   DeleteUser {
     /// Username to delete
     username: String,
   },
+
   /// Create an API key for a user
   CreateKey {
     /// Username to create a key for
     username: String,
   },
+
   /// Check an API key or key hash
   CheckKey {
     /// API key or key hash to check
     key: String,
   },
+
   /// List API keys for a user
   ListKeys {
     /// Username to list keys for
     username: String,
   },
+
   /// Delete an API key or key hash
   DeleteKey {
     /// API key or key hash to delete
     key: String,
+  },
+
+  /// Output a shell completion script to stdout
+  Completions {
+    /// Shell to generate completions for
+    shell: Shell,
   },
 }
 
@@ -63,7 +77,20 @@ fn die(message: impl AsRef<str>) -> ! {
 fn main() {
   let cli = Cli::parse();
 
-  let database = match Database::new(&cli.database, false) {
+  if let Action::Completions { shell } = cli.action {
+    clap_complete::generate(
+      shell,
+      &mut Cli::command(),
+      "shortenerkey",
+      &mut io::stdout(),
+    );
+    return;
+  }
+
+  let db_path = cli
+    .database
+    .unwrap_or_else(|| die("--database is required"));
+  let database = match Database::new(&db_path, false) {
     Ok(database) => database,
     Err(error) => die(format!("Error opening database: {}", error)),
   };
@@ -79,6 +106,7 @@ fn main() {
     Action::CheckKey { key } => check_key(&database, &key),
     Action::ListKeys { username } => list_keys(&database, &username),
     Action::DeleteKey { key } => delete_key(&database, &key),
+    Action::Completions { .. } => unreachable!(),
   }
 }
 

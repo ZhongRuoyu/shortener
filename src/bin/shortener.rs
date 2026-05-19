@@ -1,6 +1,8 @@
+use std::io;
 use std::process;
 
-use clap::Parser;
+use clap::{CommandFactory, Parser, Subcommand};
+use clap_complete::Shell;
 
 use shortener::{Config, Logger, Shortener};
 
@@ -42,6 +44,18 @@ struct Cli {
   /// Trust X-Forwarded-For header from reverse proxy
   #[arg(long)]
   trust_proxy: bool,
+
+  #[command(subcommand)]
+  command: Option<Command>,
+}
+
+#[derive(Subcommand)]
+enum Command {
+  /// Output a shell completion script to stdout
+  Completions {
+    /// Shell to generate completions for
+    shell: Shell,
+  },
 }
 
 impl From<Cli> for Config {
@@ -68,7 +82,19 @@ impl From<Cli> for Config {
 
 #[tokio::main]
 async fn main() {
-  let config: Config = Cli::parse().into();
+  let cli = Cli::parse();
+
+  if let Some(Command::Completions { shell }) = cli.command {
+    clap_complete::generate(
+      shell,
+      &mut Cli::command(),
+      "shortener",
+      &mut io::stdout(),
+    );
+    return;
+  }
+
+  let config: Config = cli.into();
 
   if let Err(error) = Logger::init(&config.log_file) {
     eprintln!("Failed to open log file: {}", error);
