@@ -168,12 +168,16 @@ To enable them, add the relevant command to your shell's profile:
 ```sh
 # Bash
 source <(shortener completions bash)
+source <(shortenerkey completions bash)
 # Zsh
 source <(shortener completions zsh)
+source <(shortenerkey completions zsh)
 # Fish
 shortener completions fish | source
+shortenerkey completions fish | source
 # PowerShell
 shortener completions powershell | Out-String | Invoke-Expression
+shortenerkey completions powershell | Out-String | Invoke-Expression
 ```
 
 ## License
