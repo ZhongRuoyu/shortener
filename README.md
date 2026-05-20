@@ -20,50 +20,46 @@ and API keys.
 
 ## Installation
 
-All installation methods come with two executables:
+- Cargo
+
+  ```sh
+  cargo install shortener
+  ```
+
+  By default, `shortener` uses the system's SQLite library.
+  If you don't have it installed, or want to use the bundled version, add
+  `--features bundled-sqlite` to the `cargo install` command.
+
+- Homebrew
+
+  ```sh
+  brew install zhongruoyu/tap/shortener
+  ```
+
+- Release binaries
+
+  `shortener`'s GitHub releases come with pre-built binaries for
+  Linux, macOS, and Windows.
+  Download the binaries from
+  [the latest release](https://github.com/ZhongRuoyu/shortener/releases/latest).
+
+- Docker
+
+  A Docker image is available on Docker Hub as
+  [`zhongruoyu/shortener`](https://hub.docker.com/r/zhongruoyu/shortener),
+  and on GitHub Container Registry as
+  [`ghcr.io/zhongruoyu/shortener`](https://ghcr.io/zhongruoyu/shortener).
+  Use the `latest` tag or a specific version tag like `v0.1.0` to track
+  releases, and `main` to track the latest commit on the main branch.
+
+  See ["Run with Docker"](#run-with-docker) for usage instructions with Docker.
+
+## Usage
+
+`shortener` comes with two executables:
 
 - `shortener`: the HTTP server.
 - `shortenerkey`: the user and API key management CLI.
-
-### Homebrew
-
-`shortener` can be installed on macOS and Linux with Homebrew:
-
-```sh
-brew install zhongruoyu/tap/shortener
-```
-
-### Release binaries
-
-`shortener`'s GitHub releases come with pre-built binaries for Linux, macOS, and
-Windows.
-Download the binaries from
-[the latest release](https://github.com/ZhongRuoyu/shortener/releases/latest).
-
-### Cargo
-
-Install `shortener` with Cargo as follows:
-
-```sh
-cargo install shortener
-```
-
-By default, `shortener` uses the system's SQLite library.
-If you don't have it installed, or want to use the bundled version, add
-`--features bundled-sqlite` to the `cargo install` command.
-
-### Docker
-
-A Docker image is available on Docker Hub as
-[`zhongruoyu/shortener`](https://hub.docker.com/r/zhongruoyu/shortener),
-and on GitHub Container Registry as
-[`ghcr.io/zhongruoyu/shortener`](https://ghcr.io/zhongruoyu/shortener).
-Use the `latest` tag or a specific version tag like `v0.1.0` to track releases,
-and `main` to track the latest commit on the main branch.
-
-See ["Run with Docker"](#run-with-docker) for usage instructions with Docker.
-
-## Usage
 
 ### Starting the server
 
