@@ -12,9 +12,10 @@ RUN \
   --mount=type=bind,source=Cargo.toml,target=Cargo.toml \
   --mount=type=bind,source=Cargo.lock,target=Cargo.lock \
   --mount=type=bind,source=README.md,target=README.md \
-  --mount=type=cache,target=/app/target \
-  --mount=type=cache,target=/usr/local/cargo/registry \
+  --mount=type=cache,target=/usr/local/cargo/registry/index \
+  --mount=type=cache,target=/usr/local/cargo/registry/cache \
   --mount=type=cache,target=/usr/local/cargo/git/db \
+  --mount=type=cache,target=/app/target \
   <<RUN
   set -ex
   cargo build --locked --release --features bundled-sqlite
