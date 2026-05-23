@@ -17,7 +17,7 @@ RUN \
   --mount=type=cache,target=/usr/local/cargo/git/db \
   --mount=type=cache,target=/app/target \
   <<RUN
-  set -ex
+  set -eux
   cargo build --locked --release --features bundled-sqlite
   cp target/release/shortener /bin/shortener
   cp target/release/shortenerkey /bin/shortenerkey
