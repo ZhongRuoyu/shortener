@@ -13,9 +13,9 @@ use shortener::{Database, DatabaseError};
   long_version = shortener::version_string(),
 )]
 struct Cli {
-  /// Path to the SQLite database
-  #[arg(short, long)]
-  database: Option<String>,
+  /// Path to SQLite database for API key storage
+  #[arg(short, long, default_value = "shortener.db")]
+  database: String,
 
   #[command(subcommand)]
   action: Action,
@@ -87,9 +87,7 @@ fn main() {
     return;
   }
 
-  let db_path = cli
-    .database
-    .unwrap_or_else(|| die("--database is required"));
+  let db_path = cli.database;
   let database = match Database::new(&db_path, false) {
     Ok(database) => database,
     Err(error) => die(format!("Error opening database: {error}")),
