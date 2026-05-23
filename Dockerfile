@@ -18,12 +18,13 @@ RUN \
   --mount=type=cache,target=/app/target \
   <<RUN
   set -eux
-  cargo build --locked --release --features bundled-sqlite
-  cp target/release/shortener /bin/shortener
-  cp target/release/shortenerkey /bin/shortenerkey
+  cargo build --locked --bins --all-features --release
+  cargo install --locked --bins --all-features --no-track \
+    --path . \
+    --root /usr/local
 RUN
 
 FROM scratch
-COPY --from=build /bin/shortener /bin/shortener
-COPY --from=build /bin/shortenerkey /bin/shortenerkey
-ENTRYPOINT ["/bin/shortener"]
+COPY --from=build /usr/local/bin/shortener /usr/local/bin/shortener
+COPY --from=build /usr/local/bin/shortenerkey /usr/local/bin/shortenerkey
+ENTRYPOINT ["/usr/local/bin/shortener"]
