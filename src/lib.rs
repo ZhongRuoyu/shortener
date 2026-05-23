@@ -8,8 +8,9 @@ mod logger;
 mod server;
 mod version;
 
+pub use code::{generate_code, is_valid_code};
 pub use config::Config;
-pub use database::{Database, DatabaseError};
+pub use database::{Database, DatabaseError, UrlInfo};
 pub use logger::Logger;
 pub use server::Shortener;
 pub use version::version_string;

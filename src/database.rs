@@ -6,6 +6,23 @@ use thiserror::Error;
 
 use crate::api_key::{generate_api_key, hash_api_key};
 
+/// Information about a shortened URL entry.
+#[derive(Debug)]
+pub struct UrlInfo {
+  /// The short code.
+  pub code: String,
+  /// The target URL.
+  pub url: String,
+  /// Unix timestamp of when this code was created.
+  pub created_at: i64,
+  /// The creator of this code.
+  pub created_by: String,
+  /// Number of times this code has been accessed.
+  pub hits: i64,
+  /// Unix timestamp of the last access, or `None` if never accessed.
+  pub last_hit: Option<i64>,
+}
+
 /// Errors that can arise from database operations.
 #[derive(Debug, Error)]
 pub enum DatabaseError {
@@ -391,8 +408,100 @@ impl Database {
     }
   }
 
+  /// Returns information about all shortened URLs, ordered by creation
+  /// time.
+  ///
+  /// # Errors
+  ///
+  /// Returns [`DatabaseError::Sqlite`] on a database error.
+  pub fn list_codes(&self) -> Result<Vec<UrlInfo>, DatabaseError> {
+    let connection = self.connection();
+    let mut statement = connection.prepare(
+      r"
+        SELECT code, url, created_at, created_by, hits, last_hit
+        FROM Urls
+        ORDER BY created_at ASC;
+      ",
+    )?;
+    let infos = statement
+      .query_map([], |row| {
+        Ok(UrlInfo {
+          code: row.get(0)?,
+          url: row.get(1)?,
+          created_at: row.get(2)?,
+          created_by: row.get(3)?,
+          hits: row.get(4)?,
+          last_hit: row.get(5)?,
+        })
+      })?
+      .collect::<Result<Vec<_>, _>>()?;
+    Ok(infos)
+  }
+
+  /// Returns information about a shortened URL without incrementing its
+  /// hit counter.
+  ///
+  /// # Errors
+  ///
+  /// Returns [`DatabaseError::NotFound`] if the code does not exist, or
+  /// [`DatabaseError::Sqlite`] on a database error.
+  pub fn get_url_info(&self, code: &str) -> Result<UrlInfo, DatabaseError> {
+    let connection = self.connection();
+    let info = connection
+      .query_row(
+        r"
+          SELECT code, url, created_at, created_by, hits, last_hit
+          FROM Urls
+          WHERE code = :code;
+        ",
+        named_params! { ":code": code },
+        |row| {
+          Ok(UrlInfo {
+            code: row.get(0)?,
+            url: row.get(1)?,
+            created_at: row.get(2)?,
+            created_by: row.get(3)?,
+            hits: row.get(4)?,
+            last_hit: row.get(5)?,
+          })
+        },
+      )
+      .optional()?;
+    info.ok_or(DatabaseError::NotFound)
+  }
+
+  /// Deletes the short code and its URL mapping from the database.
+  ///
+  /// # Errors
+  ///
+  /// Returns [`DatabaseError::NotFound`] if the code does not exist, or
+  /// [`DatabaseError::Sqlite`] on a database error.
+  pub fn delete_code(&self, code: &str) -> Result<(), DatabaseError> {
+    let connection = self.connection();
+    let rows = connection.execute(
+      r"
+        DELETE FROM Urls
+        WHERE code = :code;
+      ",
+      named_params! { ":code": code },
+    )?;
+    if rows == 0 {
+      return Err(DatabaseError::NotFound);
+    }
+    Ok(())
+  }
+
   fn connection(&self) -> MutexGuard<'_, Connection> {
     self.connection.lock().expect("database mutex poisoned")
+  }
+
+  /// Creates a new in-memory database for testing.
+  #[cfg(test)]
+  fn new_in_memory() -> Result<Self, DatabaseError> {
+    let connection = Connection::open_in_memory()?;
+    Ok(Self {
+      connection: Mutex::new(connection),
+    })
   }
 }
 
@@ -402,4 +511,248 @@ fn is_constraint(error: &rusqlite::Error) -> bool {
     rusqlite::Error::SqliteFailure(sqlite_error, _)
       if sqlite_error.code == rusqlite::ErrorCode::ConstraintViolation
   )
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  fn setup() -> Database {
+    let db = Database::new_in_memory().unwrap();
+    db.init().unwrap();
+    db
+  }
+
+  #[test]
+  fn create_and_list_users() {
+    let db = setup();
+    db.create_user("alice").unwrap();
+    db.create_user("bob").unwrap();
+    let users = db.list_users().unwrap();
+    assert!(users.contains(&"alice".to_owned()));
+    assert!(users.contains(&"bob".to_owned()));
+  }
+
+  #[test]
+  fn create_duplicate_user_fails() {
+    let db = setup();
+    db.create_user("alice").unwrap();
+    let err = db.create_user("alice").unwrap_err();
+    assert!(matches!(err, DatabaseError::UsernameAlreadyInUse));
+  }
+
+  #[test]
+  fn delete_user() {
+    let db = setup();
+    db.create_user("alice").unwrap();
+    db.delete_user("alice").unwrap();
+    let users = db.list_users().unwrap();
+    assert!(!users.contains(&"alice".to_owned()));
+  }
+
+  #[test]
+  fn delete_nonexistent_user_fails() {
+    let db = setup();
+    let err = db.delete_user("nobody").unwrap_err();
+    assert!(matches!(err, DatabaseError::NotFound));
+  }
+
+  #[test]
+  fn create_and_check_api_key() {
+    let db = setup();
+    db.create_user("alice").unwrap();
+    let key = db.create_api_key("alice").unwrap();
+    let username = db.check_api_key(&key).unwrap();
+    assert_eq!(username, "alice");
+  }
+
+  #[test]
+  fn check_api_key_by_hash() {
+    let db = setup();
+    db.create_user("alice").unwrap();
+    let key = db.create_api_key("alice").unwrap();
+    let hash = crate::api_key::hash_api_key(&key).unwrap();
+    let username = db.check_api_key_by_hash(&hash).unwrap();
+    assert_eq!(username, "alice");
+  }
+
+  #[test]
+  fn create_api_key_for_nonexistent_user_fails() {
+    let db = setup();
+    let err = db.create_api_key("nobody").unwrap_err();
+    assert!(matches!(err, DatabaseError::NotFound));
+  }
+
+  #[test]
+  fn check_nonexistent_api_key_fails() {
+    let db = setup();
+    // Valid base64 but not in the database.
+    let err = db
+      .check_api_key("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=")
+      .unwrap_err();
+    assert!(matches!(err, DatabaseError::NotFound));
+  }
+
+  #[test]
+  fn check_api_key_invalid_base64_fails() {
+    let db = setup();
+    let err = db.check_api_key("not!valid!base64").unwrap_err();
+    assert!(matches!(err, DatabaseError::ApiKey(_)));
+  }
+
+  #[test]
+  fn list_api_keys() {
+    let db = setup();
+    db.create_user("alice").unwrap();
+    let key1 = db.create_api_key("alice").unwrap();
+    let key2 = db.create_api_key("alice").unwrap();
+    let hashes = db.list_api_keys("alice").unwrap();
+    let hash1 = crate::api_key::hash_api_key(&key1).unwrap();
+    let hash2 = crate::api_key::hash_api_key(&key2).unwrap();
+    assert!(hashes.contains(&hash1));
+    assert!(hashes.contains(&hash2));
+  }
+
+  #[test]
+  fn delete_api_key() {
+    let db = setup();
+    db.create_user("alice").unwrap();
+    let key = db.create_api_key("alice").unwrap();
+    db.delete_api_key(&key).unwrap();
+    let err = db.check_api_key(&key).unwrap_err();
+    assert!(matches!(err, DatabaseError::NotFound));
+  }
+
+  #[test]
+  fn delete_api_key_by_hash() {
+    let db = setup();
+    db.create_user("alice").unwrap();
+    let key = db.create_api_key("alice").unwrap();
+    let hash = crate::api_key::hash_api_key(&key).unwrap();
+    db.delete_api_key_by_hash(&hash).unwrap();
+    let err = db.check_api_key(&key).unwrap_err();
+    assert!(matches!(err, DatabaseError::NotFound));
+  }
+
+  #[test]
+  fn delete_nonexistent_api_key_fails() {
+    let db = setup();
+    let err = db.delete_api_key_by_hash("nonexistenthash").unwrap_err();
+    assert!(matches!(err, DatabaseError::NotFound));
+  }
+
+  #[test]
+  fn deleting_user_deactivates_api_keys() {
+    let db = setup();
+    db.create_user("alice").unwrap();
+    let key = db.create_api_key("alice").unwrap();
+    db.delete_user("alice").unwrap();
+    let err = db.check_api_key(&key).unwrap_err();
+    assert!(matches!(err, DatabaseError::NotFound));
+  }
+
+  #[test]
+  fn create_and_get_url() {
+    let db = setup();
+    db.create_code("https://example.com", "abc", "alice")
+      .unwrap();
+    let url = db.get_url("abc").unwrap();
+    assert_eq!(url, "https://example.com");
+  }
+
+  #[test]
+  fn get_url_increments_hits() {
+    let db = setup();
+    db.create_code("https://example.com", "abc", "alice")
+      .unwrap();
+    db.get_url("abc").unwrap();
+    db.get_url("abc").unwrap();
+    let info = db.get_url_info("abc").unwrap();
+    assert_eq!(info.hits, 2);
+  }
+
+  #[test]
+  fn create_duplicate_code_fails() {
+    let db = setup();
+    db.create_code("https://example.com", "abc", "alice")
+      .unwrap();
+    let err = db
+      .create_code("https://other.com", "abc", "alice")
+      .unwrap_err();
+    assert!(matches!(err, DatabaseError::CodeAlreadyInUse));
+  }
+
+  #[test]
+  fn get_nonexistent_url_fails() {
+    let db = setup();
+    let err = db.get_url("nope").unwrap_err();
+    assert!(matches!(err, DatabaseError::NotFound));
+  }
+
+  #[test]
+  fn list_codes() {
+    let db = setup();
+    db.create_code("https://example.com", "abc", "alice")
+      .unwrap();
+    db.create_code("https://other.com", "def", "bob").unwrap();
+    let codes = db.list_codes().unwrap();
+    assert_eq!(codes.len(), 2);
+    let code_values: Vec<_> = codes.iter().map(|c| c.code.as_str()).collect();
+    assert!(code_values.contains(&"abc"));
+    assert!(code_values.contains(&"def"));
+  }
+
+  #[test]
+  fn list_codes_empty() {
+    let db = setup();
+    let codes = db.list_codes().unwrap();
+    assert!(codes.is_empty());
+  }
+
+  #[test]
+  fn get_url_info() {
+    let db = setup();
+    db.create_code("https://example.com", "abc", "alice")
+      .unwrap();
+    let info = db.get_url_info("abc").unwrap();
+    assert_eq!(info.code, "abc");
+    assert_eq!(info.url, "https://example.com");
+    assert_eq!(info.created_by, "alice");
+    assert_eq!(info.hits, 0);
+    assert!(info.last_hit.is_none());
+  }
+
+  #[test]
+  fn get_url_info_sets_last_hit_after_access() {
+    let db = setup();
+    db.create_code("https://example.com", "abc", "alice")
+      .unwrap();
+    db.get_url("abc").unwrap();
+    let info = db.get_url_info("abc").unwrap();
+    assert!(info.last_hit.is_some());
+  }
+
+  #[test]
+  fn get_url_info_nonexistent_fails() {
+    let db = setup();
+    let err = db.get_url_info("nope").unwrap_err();
+    assert!(matches!(err, DatabaseError::NotFound));
+  }
+
+  #[test]
+  fn delete_code() {
+    let db = setup();
+    db.create_code("https://example.com", "abc", "alice")
+      .unwrap();
+    db.delete_code("abc").unwrap();
+    let err = db.get_url("abc").unwrap_err();
+    assert!(matches!(err, DatabaseError::NotFound));
+  }
+
+  #[test]
+  fn delete_nonexistent_code_fails() {
+    let db = setup();
+    let err = db.delete_code("nope").unwrap_err();
+    assert!(matches!(err, DatabaseError::NotFound));
+  }
 }
