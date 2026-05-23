@@ -11,10 +11,11 @@ URL creation with API keys.
 - Random alphanumeric codes with configurable length.
 - Custom aliases using letters, digits, dashes (`-`), and underscores (`_`).
 - Optional bearer-token authentication for URL creation.
-- User and API key management through `shortener-key`.
 - Access logging to stdout and a log file.
 - Reverse-proxy support through `--trust-proxy`.
 - Optional redirect from `/` to a configured main page.
+- URL management through `shortener-url` CLI.
+- User and API key management through `shortener-key` CLI.
 
 ## Installation
 
@@ -54,10 +55,11 @@ URL creation with API keys.
 
 ## Usage
 
-`shortener` comes with two executables:
+`shortener` comes with three executables:
 
 - `shortener`: the HTTP server.
-- `shortener-key`: the user and API key management CLI.
+- `shortener-url`: a CLI for creating and managing short URLs directly.
+- `shortener-key`: a CLI for user and API key management.
 
 ### Starting the server
 
@@ -78,12 +80,7 @@ Useful flags:
 - `--code-length N`: change generated code length. The default is `6`.
 - `--trust-proxy`: use the first `X-Forwarded-For` address for logging.
 
-See the full CLI help with:
-
-```sh
-shortener --help
-shortener-key --help
-```
+See the full CLI help with `shortener --help`.
 
 ### Creating and using short URLs
 
@@ -103,6 +100,29 @@ curl -X POST http://localhost:8080/docs -d 'https://example.com/docs'
 
 Open the generated short URL and the server returns a `302 Found` redirect to
 the stored destination.
+
+### Managing short URLs
+
+`shortener-url` provides a CLI for managing short URLs directly through the
+database:
+
+```sh
+# Create a short URL with an auto-generated code
+shortener-url --database shortener.db create 'https://example.com/some/path'
+# Create a short URL with a custom code
+shortener-url --database shortener.db create 'https://example.com/docs' docs
+# List all short URLs
+shortener-url --database shortener.db list
+# List all short URLs in JSON format (also supported: CSV and table)
+shortener-url --database shortener.db list --format json
+# Get details of a short URL by code
+shortener-url --database shortener.db get docs
+# Delete a short URL by code
+shortener-url --database shortener.db delete docs
+```
+
+Some other options are also available.
+See `shortener-url --help` for full usage instructions.
 
 ### Authentication and API keys
 
@@ -132,6 +152,8 @@ Other management commands include:
 - `list-keys <username>`
 - `delete-key <key-or-hash>`
 
+See `shortener-key --help` for full usage instructions.
+
 ### Run with Docker
 
 Run the server and persist the database and logs in a local directory:
@@ -148,10 +170,15 @@ docker run --rm \
   --log-file /data/access.log
 ```
 
-You can also run `shortener-key` inside the same image by overriding the
-entrypoint:
+You can also run `shortener-url` or `shortener-key` inside the same image by
+overriding the entrypoint:
 
 ```sh
+docker run --rm \
+  --entrypoint shortener-url \
+  -v "$PWD/data:/data" \
+  zhongruoyu/shortener \
+  --database /data/shortener.db list
 docker run --rm \
   --entrypoint shortener-key \
   -v "$PWD/data:/data" \
@@ -167,15 +194,19 @@ To enable them, add the relevant command to your shell's profile:
 ```sh
 # Bash
 source <(shortener completions bash)
+source <(shortener-url completions bash)
 source <(shortener-key completions bash)
 # Zsh
 source <(shortener completions zsh)
+source <(shortener-url completions zsh)
 source <(shortener-key completions zsh)
 # Fish
 shortener completions fish | source
+shortener-url completions fish | source
 shortener-key completions fish | source
 # PowerShell
 shortener completions powershell | Out-String | Invoke-Expression
+shortener-url completions powershell | Out-String | Invoke-Expression
 shortener-key completions powershell | Out-String | Invoke-Expression
 ```
 
