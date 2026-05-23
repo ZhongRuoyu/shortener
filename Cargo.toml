@@ -8,6 +8,12 @@ readme = "README.md"
 homepage = "https://github.com/ZhongRuoyu/shortener"
 repository = "https://github.com/ZhongRuoyu/shortener.git"
 license = "MIT"
+keywords = ["url-shortener", "web-server", "sqlite"]
+categories = [
+  "command-line-utilities",
+  "web-programming",
+  "web-programming::http-server",
+]
 default-run = "shortener"
 
 [dependencies]
