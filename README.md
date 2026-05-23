@@ -3,8 +3,6 @@
 `shortener` is a small URL shortener written in Rust.
 It serves HTTP redirects, stores mappings in SQLite, and optionally protects
 URL creation with API keys.
-The repository also includes `shortenerkey`, a companion CLI for managing users
-and API keys.
 
 ## Features
 
@@ -13,7 +11,7 @@ and API keys.
 - Random alphanumeric codes with configurable length.
 - Custom aliases using letters, digits, dashes (`-`), and underscores (`_`).
 - Optional bearer-token authentication for URL creation.
-- User and API key management through `shortenerkey`.
+- User and API key management through `shortener-key`.
 - Access logging to stdout and a log file.
 - Reverse-proxy support through `--trust-proxy`.
 - Optional redirect from `/` to a configured main page.
@@ -59,7 +57,7 @@ and API keys.
 `shortener` comes with two executables:
 
 - `shortener`: the HTTP server.
-- `shortenerkey`: the user and API key management CLI.
+- `shortener-key`: the user and API key management CLI.
 
 ### Starting the server
 
@@ -84,7 +82,7 @@ See the full CLI help with:
 
 ```sh
 shortener --help
-shortenerkey --help
+shortener-key --help
 ```
 
 ### Creating and using short URLs
@@ -110,11 +108,12 @@ the stored destination.
 
 When `--auth` is enabled, only authenticated `POST` requests can create short
 URLs, though `GET` requests for URL redirection remain unauthenticated.
-Use `shortenerkey` to manage users and API keys against the same SQLite database:
+Use `shortener-key` to manage users and API keys against the same SQLite
+database:
 
 ```sh
-shortenerkey --database shortener.db create-user alice
-shortenerkey --database shortener.db create-key alice
+shortener-key --database shortener.db create-user alice
+shortener-key --database shortener.db create-key alice
 ```
 
 Then create a short URL with the returned key:
@@ -149,12 +148,12 @@ docker run --rm \
   --log-file /data/access.log
 ```
 
-You can also run `shortenerkey` inside the same image by overriding the
+You can also run `shortener-key` inside the same image by overriding the
 entrypoint:
 
 ```sh
 docker run --rm \
-  --entrypoint shortenerkey \
+  --entrypoint shortener-key \
   -v "$PWD/data:/data" \
   zhongruoyu/shortener \
   --database /data/shortener.db create-user alice
@@ -162,22 +161,22 @@ docker run --rm \
 
 ### Shell completions
 
-Shell completions are available for `shortener` and `shortenerkey`.
+Shell completions are available for `shortener` and `shortener-key`.
 To enable them, add the relevant command to your shell's profile:
 
 ```sh
 # Bash
 source <(shortener completions bash)
-source <(shortenerkey completions bash)
+source <(shortener-key completions bash)
 # Zsh
 source <(shortener completions zsh)
-source <(shortenerkey completions zsh)
+source <(shortener-key completions zsh)
 # Fish
 shortener completions fish | source
-shortenerkey completions fish | source
+shortener-key completions fish | source
 # PowerShell
 shortener completions powershell | Out-String | Invoke-Expression
-shortenerkey completions powershell | Out-String | Invoke-Expression
+shortener-key completions powershell | Out-String | Invoke-Expression
 ```
 
 ## License

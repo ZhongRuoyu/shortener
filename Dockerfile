@@ -26,5 +26,5 @@ RUN
 
 FROM scratch
 COPY --from=build /usr/local/bin/shortener /usr/local/bin/shortener
-COPY --from=build /usr/local/bin/shortenerkey /usr/local/bin/shortenerkey
+COPY --from=build /usr/local/bin/shortener-key /usr/local/bin/shortener-key
 ENTRYPOINT ["/usr/local/bin/shortener"]

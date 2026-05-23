@@ -81,7 +81,7 @@ fn main() {
     clap_complete::generate(
       shell,
       &mut Cli::command(),
-      "shortenerkey",
+      "shortener-key",
       &mut io::stdout(),
     );
     return;
