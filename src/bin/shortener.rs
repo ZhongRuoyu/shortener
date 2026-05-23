@@ -21,7 +21,7 @@ struct Cli {
   #[arg(long, default_value_t = 8080)]
   listen_port: u16,
 
-  /// Prefix to shortened URL, e.g. https://example.com/
+  /// Prefix to shortened URL, e.g. <https://example.com/>
   #[arg(long)]
   url_prefix: Option<String>,
 
@@ -61,10 +61,11 @@ enum Command {
 impl From<Cli> for Config {
   fn from(cli: Cli) -> Config {
     let url_prefix = cli.url_prefix.unwrap_or_else(|| {
-      if cli.listen_port == 80 {
+      let listen_port = cli.listen_port;
+      if listen_port == 80 {
         "http://localhost/".to_owned()
       } else {
-        format!("http://localhost:{}/", cli.listen_port)
+        format!("http://localhost:{listen_port}/")
       }
     });
     Config {
@@ -97,23 +98,23 @@ async fn main() {
   let config: Config = cli.into();
 
   if let Err(error) = Logger::init(&config.log_file) {
-    eprintln!("Failed to open log file: {}", error);
+    eprintln!("Failed to open log file: {error}");
     process::exit(1);
   }
 
-  log::info!("Config: {:?}", config);
+  log::info!("Config: {config:?}");
 
   let shortener = match Shortener::new(config) {
     Ok(shortener) => shortener,
     Err(error) => {
-      log::error!("Failed to create shortener: {}", error);
+      log::error!("Failed to create shortener: {error}");
       process::exit(1);
     }
   };
 
   log::info!("Starting HTTP server");
   if let Err(error) = shortener.listen_and_serve().await {
-    log::error!("{}", error);
+    log::error!("{error}");
     process::exit(1);
   }
 }

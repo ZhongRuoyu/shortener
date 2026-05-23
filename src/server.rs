@@ -32,6 +32,11 @@ struct AppState {
 impl Shortener {
   /// Creates a new `Shortener` from `config`, opening or creating the
   /// SQLite database and running schema initialization.
+  ///
+  /// # Errors
+  ///
+  /// Returns [`DatabaseError`] if the database cannot be opened or
+  /// initialized.
   pub fn new(config: Config) -> Result<Self, DatabaseError> {
     let database = Database::new(&config.sqlite_db, true)?;
     database.init()?;
@@ -46,6 +51,11 @@ impl Shortener {
 
   /// Binds the configured TCP port and starts serving HTTP requests.
   /// This future runs until the server encounters an I/O error.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`io::Error`] if the TCP listener cannot be bound or
+  /// the server encounters a fatal I/O error while running.
   pub async fn listen_and_serve(self) -> io::Result<()> {
     let address = &SocketAddr::new(
       Ipv6Addr::UNSPECIFIED.into(),
@@ -74,35 +84,32 @@ async fn handle_request(
   match method {
     Method::GET => {
       if uri.path().is_empty() || uri.path() == "/" {
-        homepage_handler(state, remote_addr, method, uri, headers)
+        homepage_handler(&state, remote_addr, &method, &uri, &headers)
       } else {
-        redirect_handler(state, remote_addr, method, uri, headers)
+        redirect_handler(&state, remote_addr, &method, &uri, &headers)
       }
     }
     Method::POST => {
-      create_code_handler(state, remote_addr, method, uri, headers, body).await
+      create_code_handler(&state, remote_addr, &method, &uri, &headers, body)
+        .await
     }
     _ => {
       let client_host = get_client_host(&state.config, remote_addr, &headers);
-      log::info!("{} {} {} Method not allowed", client_host, method, uri);
+      log::info!("{client_host} {method} {uri} Method not allowed");
       http_error(StatusCode::METHOD_NOT_ALLOWED, "Method not allowed")
     }
   }
 }
 
 fn homepage_handler(
-  state: AppState,
+  state: &AppState,
   remote_addr: SocketAddr,
-  method: Method,
-  uri: Uri,
-  headers: HeaderMap,
+  method: &Method,
+  uri: &Uri,
+  headers: &HeaderMap,
 ) -> Response {
-  log::info!(
-    "{} {} {}",
-    get_client_host(&state.config, remote_addr, &headers),
-    method,
-    uri
-  );
+  let client_host = get_client_host(&state.config, remote_addr, headers);
+  log::info!("{client_host} {method} {uri}");
 
   match &state.config.main_page {
     Some(main_page) => redirect_response(main_page),
@@ -111,37 +118,37 @@ fn homepage_handler(
 }
 
 fn redirect_handler(
-  state: AppState,
+  state: &AppState,
   remote_addr: SocketAddr,
-  method: Method,
-  uri: Uri,
-  headers: HeaderMap,
+  method: &Method,
+  uri: &Uri,
+  headers: &HeaderMap,
 ) -> Response {
   let code = code_from_path(uri.path());
-  let client_host = get_client_host(&state.config, remote_addr, &headers);
+  let client_host = get_client_host(&state.config, remote_addr, headers);
 
   match state.database.get_url(&code) {
     Ok(url) => {
-      log::info!("{} {} {} => {}", client_host, method, uri, url);
+      log::info!("{client_host} {method} {uri} => {url}");
       redirect_response(&url)
     }
     Err(DatabaseError::NotFound) => {
-      log::info!("{} {} {} [Not found]", client_host, method, uri);
+      log::info!("{client_host} {method} {uri} [Not found]");
       http_error(StatusCode::NOT_FOUND, "Not found")
     }
     Err(error) => {
-      log::info!("{} {} {} [{}]", client_host, method, uri, error);
+      log::info!("{client_host} {method} {uri} [{error}]");
       http_error(StatusCode::INTERNAL_SERVER_ERROR, "Internal server error")
     }
   }
 }
 
 async fn create_code_handler(
-  state: AppState,
+  state: &AppState,
   remote_addr: SocketAddr,
-  method: Method,
-  uri: Uri,
-  headers: HeaderMap,
+  method: &Method,
+  uri: &Uri,
+  headers: &HeaderMap,
   body: Body,
 ) -> Response {
   let custom_code = if uri.path().is_empty() || uri.path() == "/" {
@@ -157,75 +164,55 @@ async fn create_code_handler(
       .and_then(|value| value.to_str().ok())
       .unwrap_or_default();
     if !auth_header.starts_with("Bearer ") {
-      log::info!(
-        "{} {} {} [Missing credentials]",
-        get_client_host(&state.config, remote_addr, &headers),
-        method,
-        uri
-      );
+      let client_host = get_client_host(&state.config, remote_addr, headers);
+      log::info!("{client_host} {method} {uri} [Missing credentials]");
       return http_error(StatusCode::UNAUTHORIZED, "Unauthorized");
     }
 
-    match state
+    if let Ok(owner) = state
       .database
       .check_api_key(&auth_header["Bearer ".len()..])
     {
-      Ok(owner) => username = owner,
-      Err(_) => {
-        log::info!(
-          "{} {} {} [Invalid credentials]",
-          get_client_host(&state.config, remote_addr, &headers),
-          method,
-          uri
-        );
-        return http_error(StatusCode::UNAUTHORIZED, "Unauthorized");
-      }
+      username = owner;
+    } else {
+      let client_host = get_client_host(&state.config, remote_addr, headers);
+      log::info!("{client_host} {method} {uri} [Invalid credentials]");
+      return http_error(StatusCode::UNAUTHORIZED, "Unauthorized");
     }
   }
 
-  let client_host = get_client_host(&state.config, remote_addr, &headers);
+  let client_host = get_client_host(&state.config, remote_addr, headers);
   let created_by = if state.config.auth {
     username.as_str()
   } else {
     client_host.as_str()
   };
 
-  let body = match to_bytes(body, MAX_BODY_SIZE).await {
-    Ok(body) => body,
-    Err(_) => {
-      log::info!(
-        "{} {} {} [Request body too large]",
-        client_host,
-        method,
-        uri
-      );
-      return http_error(
-        StatusCode::PAYLOAD_TOO_LARGE,
-        "Request body too large",
-      );
-    }
+  let Ok(body) = to_bytes(body, MAX_BODY_SIZE).await else {
+    log::info!("{client_host} {method} {uri} [Request body too large]");
+    return http_error(StatusCode::PAYLOAD_TOO_LARGE, "Request body too large");
   };
   let body = String::from_utf8_lossy(&body);
   let target_url = body.trim().to_owned();
 
   if !is_valid_http_url(&target_url) {
-    log::info!("{} {} {} [Invalid URL]", client_host, method, uri);
+    log::info!("{client_host} {method} {uri} [Invalid URL]");
     return http_error(StatusCode::BAD_REQUEST, "Invalid URL");
   }
 
   if !custom_code.is_empty() && !is_valid_code(&custom_code) {
-    log::info!("{} {} {} [Invalid code]", client_host, method, uri);
+    log::info!("{client_host} {method} {uri} [Invalid code]");
     return http_error(StatusCode::BAD_REQUEST, "Invalid code");
   }
 
   let code = if custom_code.is_empty() {
     match create_generated_code(
-      &state,
+      state,
       &target_url,
       created_by,
       &client_host,
-      &method,
-      &uri,
+      method,
+      uri,
     ) {
       Some(code) => code,
       None => {
@@ -242,11 +229,11 @@ async fn create_code_handler(
     {
       Ok(()) => custom_code,
       Err(DatabaseError::CodeAlreadyInUse) => {
-        log::info!("{} {} {} [Code already in use]", client_host, method, uri);
+        log::info!("{client_host} {method} {uri} [Code already in use]");
         return http_error(StatusCode::CONFLICT, "Code already in use");
       }
       Err(error) => {
-        log::info!("{} {} {} [{}]", client_host, method, uri, error);
+        log::info!("{client_host} {method} {uri} [{error}]");
         return http_error(
           StatusCode::INTERNAL_SERVER_ERROR,
           "Internal server error",
@@ -255,16 +242,13 @@ async fn create_code_handler(
     }
   };
 
-  let new_url = format!("{}{}", state.config.url_prefix, code);
-  log::info!(
-    "{} {} {} ({}) => {}",
-    client_host,
-    method,
-    uri,
-    target_url,
-    new_url
+  let new_url = format!(
+    "{url_prefix}{code}",
+    url_prefix = state.config.url_prefix,
+    code = code,
   );
-  plain_response(format!("{}\n", new_url))
+  log::info!("{client_host} {method} {uri} ({target_url}) => {new_url}");
+  plain_response(format!("{new_url}\n"))
 }
 
 fn create_generated_code(
@@ -283,24 +267,13 @@ fn create_generated_code(
       Ok(()) => break,
       Err(DatabaseError::CodeAlreadyInUse) => {
         log::info!(
-          "{} {} {} [Attempt {}: {}: Code already in use]",
-          client_host,
-          method,
-          uri,
-          attempt,
-          code
+          "{client_host} {method} {uri} [Attempt {attempt}: {code}: Code already in use]"
         );
         code.clear();
       }
       Err(error) => {
         log::info!(
-          "{} {} {} [Attempt {}: {}: {}]",
-          client_host,
-          method,
-          uri,
-          attempt,
-          code,
-          error
+          "{client_host} {method} {uri} [Attempt {attempt}: {code}: {error}]"
         );
         code.clear();
       }
@@ -308,12 +281,7 @@ fn create_generated_code(
   }
 
   if code.is_empty() {
-    log::info!(
-      "{} {} {} [Could not generate code]",
-      client_host,
-      method,
-      uri
-    );
+    log::info!("{client_host} {method} {uri} [Could not generate code]");
     return None;
   }
 
@@ -321,9 +289,7 @@ fn create_generated_code(
 }
 
 fn is_valid_http_url(input: &str) -> bool {
-  Url::parse(input)
-    .map(|url| matches!(url.scheme(), "http" | "https"))
-    .unwrap_or(false)
+  Url::parse(input).is_ok_and(|url| matches!(url.scheme(), "http" | "https"))
 }
 
 fn get_client_host(
@@ -364,7 +330,7 @@ fn http_error(status: StatusCode, message: &str) -> Response {
     .status(status)
     .header(CONTENT_TYPE, "text/plain; charset=utf-8")
     .header("X-Content-Type-Options", "nosniff")
-    .body(Body::from(format!("{}\n", message)))
+    .body(Body::from(format!("{message}\n")))
     .expect("response should build")
 }
 
@@ -372,6 +338,6 @@ fn redirect_response(location: &str) -> Response {
   Response::builder()
     .status(StatusCode::FOUND)
     .header(LOCATION, location)
-    .body(Body::from(format!("{}\n", location)))
+    .body(Body::from(format!("{location}\n")))
     .expect("response should build")
 }

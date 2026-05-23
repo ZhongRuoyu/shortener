@@ -52,7 +52,7 @@ and API keys.
   Use the `latest` tag or a specific version tag like `v0.1.0` to track
   releases, and `main` to track the latest commit on the main branch.
 
-  See ["Run with Docker"](#run-with-docker) for usage instructions with Docker.
+  See [Run with Docker](#run-with-docker) for usage instructions with Docker.
 
 ## Usage
 

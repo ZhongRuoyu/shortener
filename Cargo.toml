@@ -37,3 +37,8 @@ chrono = "0.4"
 
 [features]
 bundled-sqlite = ["rusqlite/bundled"]
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+cargo = { level = "warn", priority = -1 }
+multiple-crate-versions = "allow"

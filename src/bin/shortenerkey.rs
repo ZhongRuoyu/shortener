@@ -70,7 +70,7 @@ enum Action {
 }
 
 fn die(message: impl AsRef<str>) -> ! {
-  eprintln!("{}", message.as_ref());
+  eprintln!("{message}", message = message.as_ref());
   process::exit(1);
 }
 
@@ -92,10 +92,10 @@ fn main() {
     .unwrap_or_else(|| die("--database is required"));
   let database = match Database::new(&db_path, false) {
     Ok(database) => database,
-    Err(error) => die(format!("Error opening database: {}", error)),
+    Err(error) => die(format!("Error opening database: {error}")),
   };
   if let Err(error) = database.init() {
-    die(format!("Error initializing database: {}", error));
+    die(format!("Error initializing database: {error}"));
   }
 
   match cli.action {
@@ -114,7 +114,7 @@ fn create_user(database: &Database, username: &str) {
   match database.create_user(username) {
     Ok(()) => println!("User created successfully"),
     Err(DatabaseError::UsernameAlreadyInUse) => die("User already exists"),
-    Err(error) => die(format!("Error creating user: {}", error)),
+    Err(error) => die(format!("Error creating user: {error}")),
   }
 }
 
@@ -122,10 +122,10 @@ fn list_users(database: &Database) {
   match database.list_users() {
     Ok(users) => {
       for user in users {
-        println!("{}", user);
+        println!("{user}");
       }
     }
-    Err(error) => die(format!("Error listing users: {}", error)),
+    Err(error) => die(format!("Error listing users: {error}")),
   }
 }
 
@@ -133,27 +133,27 @@ fn delete_user(database: &Database, username: &str) {
   match database.delete_user(username) {
     Ok(()) => println!("User deleted successfully"),
     Err(DatabaseError::NotFound) => die("User not found"),
-    Err(error) => die(format!("Error deleting user: {}", error)),
+    Err(error) => die(format!("Error deleting user: {error}")),
   }
 }
 
 fn create_key(database: &Database, username: &str) {
   match database.create_api_key(username) {
-    Ok(key) => println!("{}", key),
+    Ok(key) => println!("{key}"),
     Err(DatabaseError::NotFound) => die("User not found"),
-    Err(error) => die(format!("Error creating API key: {}", error)),
+    Err(error) => die(format!("Error creating API key: {error}")),
   }
 }
 
 fn check_key(database: &Database, key: &str) {
   match database.check_api_key(key) {
-    Ok(username) => println!("Valid (user: {})", username),
+    Ok(username) => println!("Valid (user: {username})"),
     Err(DatabaseError::NotFound) => match database.check_api_key_by_hash(key) {
-      Ok(username) => println!("Valid (user: {})", username),
+      Ok(username) => println!("Valid (user: {username})"),
       Err(DatabaseError::NotFound) => die("API key not valid"),
-      Err(error) => die(format!("Error checking API key: {}", error)),
+      Err(error) => die(format!("Error checking API key: {error}")),
     },
-    Err(error) => die(format!("Error checking API key: {}", error)),
+    Err(error) => die(format!("Error checking API key: {error}")),
   }
 }
 
@@ -161,10 +161,10 @@ fn list_keys(database: &Database, username: &str) {
   match database.list_api_keys(username) {
     Ok(keys) => {
       for key in keys {
-        println!("{}", key);
+        println!("{key}");
       }
     }
-    Err(error) => die(format!("Error listing API keys: {}", error)),
+    Err(error) => die(format!("Error listing API keys: {error}")),
   }
 }
 
@@ -175,9 +175,9 @@ fn delete_key(database: &Database, key: &str) {
       match database.delete_api_key_by_hash(key) {
         Ok(()) => println!("API key deleted successfully"),
         Err(DatabaseError::NotFound) => die("API key not found"),
-        Err(error) => die(format!("Error deleting API key: {}", error)),
+        Err(error) => die(format!("Error deleting API key: {error}")),
       }
     }
-    Err(error) => die(format!("Error deleting API key: {}", error)),
+    Err(error) => die(format!("Error deleting API key: {error}")),
   }
 }
