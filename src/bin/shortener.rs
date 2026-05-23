@@ -35,7 +35,7 @@ struct Cli {
 
   /// Path to SQLite database for URL and API key storage
   #[arg(long, default_value = "shortener.db")]
-  sqlite_db: String,
+  database: String,
 
   /// Path to access log file
   #[arg(long, default_value = "access.log")]
@@ -74,7 +74,7 @@ impl From<Cli> for Config {
       url_prefix,
       main_page: cli.main_page,
       code_length: cli.code_length,
-      sqlite_db: cli.sqlite_db,
+      database: cli.database,
       log_file: cli.log_file,
       trust_proxy: cli.trust_proxy,
     }

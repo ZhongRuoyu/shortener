@@ -38,7 +38,7 @@ impl Shortener {
   /// Returns [`DatabaseError`] if the database cannot be opened or
   /// initialized.
   pub fn new(config: Config) -> Result<Self, DatabaseError> {
-    let database = Database::new(&config.sqlite_db, true)?;
+    let database = Database::new(&config.database, true)?;
     database.init()?;
 
     Ok(Self {

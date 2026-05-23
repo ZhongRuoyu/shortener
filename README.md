@@ -67,7 +67,7 @@ Start a local instance:
 shortener \
   --listen-port 8080 \
   --url-prefix http://localhost:8080/ \
-  --sqlite-db shortener.db \
+  --database shortener.db \
   --log-file access.log
 ```
 
@@ -144,7 +144,7 @@ docker run --rm \
   zhongruoyu/shortener \
   --listen-port 8080 \
   --url-prefix http://localhost:8080/ \
-  --sqlite-db /data/shortener.db \
+  --database /data/shortener.db \
   --log-file /data/access.log
 ```
 

@@ -12,7 +12,7 @@ pub struct Config {
   /// Number of random characters in a generated short code.
   pub code_length: usize,
   /// Filesystem path to the SQLite database file.
-  pub sqlite_db: String,
+  pub database: String,
   /// Filesystem path to the access log file.
   pub log_file: String,
   /// Whether to trust `X-Forwarded-For` headers from a reverse proxy.
