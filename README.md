@@ -48,8 +48,8 @@ URL creation with API keys.
   [`zhongruoyu/shortener`](https://hub.docker.com/r/zhongruoyu/shortener),
   and on GitHub Container Registry as
   [`ghcr.io/zhongruoyu/shortener`](https://ghcr.io/zhongruoyu/shortener).
-  Use the `latest` tag or a specific version tag like `v0.1.0` to track
-  releases, and `main` to track the latest commit on the main branch.
+  Use the `latest` tag or a specific version tag to track releases,
+  and `main` to track the latest commit on the main branch.
 
   See [Run with Docker](#run-with-docker) for usage instructions with Docker.
 
