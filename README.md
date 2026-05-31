@@ -188,7 +188,8 @@ docker run --rm \
 
 ### Shell completions
 
-Shell completions are available for `shortener` and `shortener-key`.
+Shell completions are available for `shortener`, `shortener-url`, and
+`shortener-key`.
 To enable them, add the relevant command to your shell's profile:
 
 ```sh
