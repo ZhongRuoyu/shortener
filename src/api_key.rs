@@ -23,7 +23,7 @@ mod tests {
   #[test]
   fn generate_api_key_is_non_empty() {
     let key = generate_api_key();
-    assert!(!key.is_empty());
+    assert_ne!(key, "");
   }
 
   #[test]
