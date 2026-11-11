@@ -50,9 +50,9 @@ enum Action {
     key: String,
   },
 
-  /// List API keys for a user
+  /// List API key hashes for a user
   ListKeys {
-    /// Username to list keys for
+    /// Username to list key hashes for
     username: String,
   },
 
