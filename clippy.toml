@@ -1,3 +1,0 @@
-# Workaround for https://github.com/rust-lang/rust-clippy/issues/16913
-# Remove when fixed and released in a stable version of Clippy.
-doc-valid-idents = ["SQLite", ".."]
